@@ -240,7 +240,7 @@ if __name__ == '__main__':
                         help='which gpu to use if any (default: 0)')
     parser.add_argument("--grad-norm", type=float, default=1.0)
     parser.add_argument('--patience', type=int, default=50, help='patience for earlystopping')
-    parser.add_argument("--lr-schedule", action='store_true')
+    parser.add_argument("--lr_schedule", action='store_true')
     parser.add_argument("--link-input", action='store_true')
     parser.add_argument('-gp', '--global-pooling', type=str, default="sum", choices=["sum", "average"],
                         help='Pooling for over nodes: sum or average')
