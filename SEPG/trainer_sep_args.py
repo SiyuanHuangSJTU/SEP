@@ -95,6 +95,10 @@ class Trainer(object):
         self.overall_results['test_loss'].append(test_loss)
         self.overall_results['test_acc'].append(test_acc)
 
+        test_result_file = "./results/{}/{}-results.txt".format(self.log_folder_name, self.exp_name)
+        with open(test_result_file, 'a+') as f:
+            f.write("[FOLD {}] {}: {} {} {} {}\n".format(fold_number, self.args.seed, self.best_loss, self.best_acc, test_loss, test_acc))
+
     def eval(self, loader):
         self.model.eval()
         correct = 0.
@@ -184,6 +188,18 @@ class Trainer(object):
         val_acc_std = np.array(self.overall_results['val_acc']).std()
         test_acc_mean = np.array(self.overall_results['test_acc']).mean()
         test_acc_std = np.array(self.overall_results['test_acc']).std()
+
+        final_result_file = "./results/{}/{}-total_results.txt".format(self.log_folder_name, self.exp_name)
+        with open(final_result_file, 'a+') as f:
+            f.write("{}: {} {} {} {}\n".format(
+                self.args.seed, 
+                np.array(self.overall_results['val_acc']).mean(), 
+                np.array(self.overall_results['val_acc']).std(), 
+                np.array(self.overall_results['test_acc']).mean(), 
+                np.array(self.overall_results['test_acc']).std()
+            ))
+
+
         print("%.4f\t%.4f\t%.4f\t%.4f\t%.2f" % (test_acc_mean,
                                                 test_acc_std,
                                                 val_acc_mean,
@@ -196,6 +212,8 @@ class Trainer(object):
         self.log_folder_name = os.path.join(*[self.args.dataset, 'SEP'])
         if not(os.path.isdir('./checkpoints/{}'.format(self.log_folder_name))):
             os.makedirs(os.path.join('./checkpoints/{}'.format(self.log_folder_name)))
+        if not(os.path.isdir('./results/{}'.format(self.log_folder_name))):
+            os.makedirs(os.path.join('./results/{}'.format(self.log_folder_name)))
         exp_name = str()
         exp_name += "GNN={}_".format(self.args.conv)
         exp_name += "TD={}_".format(self.args.tree_depth)
