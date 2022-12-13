@@ -52,9 +52,14 @@ class Trainer(object):
 
     def load_tvt(self, fold_number, val_fold_number):
         data = self.args.dataset
-        train_idxes = torch.as_tensor(np.loadtxt('./datasets/%s/10fold_idx/train_idx-%d.txt' % (data, fold_number), dtype=np.int32), dtype=torch.long)
-        val_idxes = torch.as_tensor(np.loadtxt('./datasets/%s/10fold_idx/test_idx-%d.txt' % (data, val_fold_number), dtype=np.int32), dtype=torch.long)
-        test_idxes = torch.as_tensor(np.loadtxt('./datasets/%s/10fold_idx/test_idx-%d.txt' % (data, fold_number), dtype=np.int32), dtype=torch.long)
+        if (self.args.rerun_under_asap_setting):
+            train_idxes = torch.as_tensor(np.loadtxt('./asap/datasets/%s/10fold_idx_%s/train_idx-%d.txt' % (data, self.args.seed, fold_number), dtype=np.int32), dtype=torch.long)
+            val_idxes = torch.as_tensor(np.loadtxt('./asap/datasets/%s/10fold_idx_%s/val_idx-%d.txt' % (data, self.args.seed, fold_number), dtype=np.int32), dtype=torch.long)
+            test_idxes = torch.as_tensor(np.loadtxt('./asap/datasets/%s/10fold_idx_%s/test_idx-%d.txt' % (data, self.args.seed, fold_number), dtype=np.int32), dtype=torch.long)
+        else:
+            train_idxes = torch.as_tensor(np.loadtxt('./datasets/%s/10fold_idx/train_idx-%d.txt' % (data, fold_number), dtype=np.int32), dtype=torch.long)
+            val_idxes = torch.as_tensor(np.loadtxt('./datasets/%s/10fold_idx/test_idx-%d.txt' % (data, val_fold_number), dtype=np.int32), dtype=torch.long)
+            test_idxes = torch.as_tensor(np.loadtxt('./datasets/%s/10fold_idx/test_idx-%d.txt' % (data, fold_number), dtype=np.int32), dtype=torch.long)
         all_idxes = reduce(np.union1d, (train_idxes, val_idxes, test_idxes))
         assert len(all_idxes) == len(self.dataset)
 
@@ -209,7 +214,7 @@ class Trainer(object):
 
     def set_experiment_name(self):
         ts = time.strftime('%Y-%m-%d-%H:%M:%S', time.gmtime())
-        self.log_folder_name = os.path.join(*[self.args.dataset, 'SEP'])
+        self.log_folder_name = os.path.join(*[self.args.dataset, 'SEP', str(self.args.seed)])
         if not(os.path.isdir('./checkpoints/{}'.format(self.log_folder_name))):
             os.makedirs(os.path.join('./checkpoints/{}'.format(self.log_folder_name)))
         if not(os.path.isdir('./results/{}'.format(self.log_folder_name))):
@@ -262,6 +267,9 @@ if __name__ == '__main__':
     parser.add_argument("--link-input", action='store_true')
     parser.add_argument('-gp', '--global-pooling', type=str, default="sum", choices=["sum", "average"],
                         help='Pooling for over nodes: sum or average')
+
+    parser.add_argument("--rerun_under_asap_setting", action='store_true')
+
     args = parser.parse_args()
 
     linkIn_dataset  = ['IMDB-BINARY', 'IMDB-MULTI', 'COLLAB', 'DD']
