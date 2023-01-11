@@ -11,7 +11,7 @@ import torch
 import pickle
 import numpy as np
 import networkx as nx
-from .codingTree import PartitionTree
+from codingTree import PartitionTree
 from torch_geometric.datasets import Planetoid
 
 

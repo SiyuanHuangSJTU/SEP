@@ -31,6 +31,7 @@ class Trainer(object):
         torch.backends.cudnn.deterministic = True
         torch.backends.cudnn.benchmark = False
         self.args = args
+        self.exp_name = self.set_experiment_name()
 
         if torch.cuda.is_available():
             self.args.device = 'cuda:{}'.format(args.gpu)
@@ -49,11 +50,17 @@ class Trainer(object):
         t_path = os.path.join(PWD, 'trees', '%s_%s.pickle' % (self.args.dataset, self.args.tree_depth))
         with open(t_path, 'rb') as fp:
             self.layer_data = pickle.load(fp)
-        dataset = Planetoid(root=os.path.join(PWD, 'data'), name=self.args.dataset)
+        dataset = Planetoid(root='data', name='%s'%(self.args.dataset.split('_')[0]), split='public')
         data = dataset[0]
-        if self.args.global_degree:
-            max_degree = degree(data.edge_index[0], dtype=torch.long).max()
-            T.OneHotDegree(max_degree).__call__(data)
+        # if self.args.global_degree:
+        #     max_degree = degree(data.edge_index[0], dtype=torch.long).max()
+        #     T.OneHotDegree(max_degree).__call__(data)
+        split = self.args.index_split
+        split_str = "%s_split_0.6_0.2_%s.npz"%(self.args.dataset.split('_')[0].lower(), str(split))
+        split_file = np.load(os.path.join('data/geomgcn/', split_str))
+        data.train_mask = torch.Tensor(split_file['train_mask'])==1
+        data.val_mask = torch.Tensor(split_file['val_mask'])==1
+        data.test_mask = torch.Tensor(split_file['test_mask'])==1
         self.args.num_features = data.num_features
         self.args.num_classes = dataset.num_classes
         self.data = data
@@ -94,6 +101,7 @@ class Trainer(object):
         return val_acc, val_loss, test_acc, test_loss
 
     def train(self):
+
         # Load Model & Optimizer
         self.model = self.load_model()
         self.optimizer = torch.optim.Adam(self.model.parameters(), lr=self.args.lr, weight_decay=self.args.l2rate)
@@ -125,12 +133,25 @@ class Trainer(object):
         val_accs = np.array(val_accs)
         val_losses = np.array(val_losses)
         test_accs = np.array(test_accs)
-        print("%.4f\t%.4f\t%s" %
-              (test_accs[val_losses.argmin()],
-               test_accs.max(),
-               epoch), flush=True)
+        print("%.4f" %(test_accs[val_losses.argmin()]))
+        test_result_file = "./results/{}/{}-results.txt".format(self.log_folder_name, self.exp_name)
+        with open(test_result_file, 'a+') as f:
+            f.write("[FOLD {}] final_test_acc: {}\n".format(self.args.index_split, test_accs[val_losses.argmin()]))
         return test_accs[val_losses.argmin()]
 
+
+    def set_experiment_name(self):
+        self.log_folder_name = os.path.join(*[self.args.dataset, 'SEP'])
+        if not(os.path.isdir('./results/{}'.format(self.log_folder_name))):
+            os.makedirs(os.path.join('./results/{}'.format(self.log_folder_name)))
+        exp_name = str()
+        exp_name += "NB={}_".format(self.args.num_blocks)
+        exp_name += "TD={}_".format(self.args.tree_depth)
+        exp_name += "HD={}_".format(self.args.hidden_dim)
+        exp_name += "CD={}_".format(self.args.conv_dropout)
+        exp_name += "PD={}_".format(self.args.pooling_dropout)
+        exp_name += "WD={}_".format(self.args.l2rate)
+        return exp_name
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='SEP arguments')
@@ -160,6 +181,9 @@ if __name__ == '__main__':
                         help='patience for earlystopping')
     parser.add_argument('--gpu', type=int, default=0,
                         help='which gpu to use if any (default: 0)')
+
+    parser.add_argument('--index_split', type=int, default=0)
+
     args = parser.parse_args()
 
     if args.dataset in ['Citeseer', 'Pubmed']:
